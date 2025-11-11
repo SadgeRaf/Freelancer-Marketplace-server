@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const app = express();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 3000;
 
 app.use(cors());
@@ -36,19 +36,43 @@ async function run() {
     })
 
     app.post('/jobs', async (req, res) => {
-      const data = req.body
+      const data = req.body;
+      data.postedAt = new Date();
       const result = await jobCollection.insertOne(data)
       res.send({
         success: true,
         result
       })
     })
-
+   
     app.get('/jobs/:id', async (req,res) => {
       const {id} = req.params
  
       const result = await jobCollection.findOne({_id: new ObjectId(id)});
 
+      res.send(result)
+    })
+
+    //update
+    app.put('/jobs/:id', async (req, res)=>{
+      const {id} = req.params
+      const data = req.body
+      const objectId = new ObjectId(id)
+      const filter = {_id: objectId}
+      const update = {
+        $set: data
+      }
+      const result = await jobCollection.updateOne(filter, update);
+
+      res.send({
+        success: true,
+        result
+      })
+    })
+
+    //delete
+    app.get('/latestJobs', async (req,res)=> {
+      const result = await jobCollection.find().sort({postedAt: 'asc' }).limit(6).toArray()
       res.send(result)
     })
 
