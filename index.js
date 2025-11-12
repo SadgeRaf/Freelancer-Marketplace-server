@@ -71,6 +71,16 @@ async function run() {
     })
 
     //delete
+   app.delete('/jobs/:id', async (req,res)=> {
+    const {id} = req.params
+    
+    const result = await jobCollection.deleteOne({_id: new ObjectId(id)})
+
+    res.send({
+      success: true,
+    })
+   })
+
     app.get('/latestJobs', async (req,res)=> {
       const result = await jobCollection.find().sort({postedAt: 'asc' }).limit(6).toArray()
       res.send(result)
