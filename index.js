@@ -3,6 +3,14 @@ const cors = require('cors');
 require('dotenv').config();
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const admin = require("firebase-admin");
+const serviceAccount = require("./key.json");
+
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 const port = process.env.PORT || 3000;
 
 app.use(cors());
@@ -20,6 +28,30 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+
+const verifyToken = async (req, res, next) => {
+  const wholeToken = req.headers.authorization
+  
+  if(!wholeToken){
+    return res.status(401).send({
+      message: "kill yourself. Where yo token at?"
+    })
+  }
+
+  const token = wholeToken.split(' ')[1]
+
+  try {
+    await admin.auth().verifyIdToken(token)
+    next()
+  } catch (error) {
+    res.status(401).send({
+      message: "kill yourself"
+    })
+  }
+
+  
+}
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -45,7 +77,7 @@ async function run() {
       })
     })
    
-    app.get('/jobs/:id', async (req,res) => {
+    app.get('/jobs/:id', verifyToken, async (req,res) => {
       const {id} = req.params
  
       const result = await jobCollection.findOne({_id: new ObjectId(id)});
