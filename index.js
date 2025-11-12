@@ -59,6 +59,7 @@ async function run() {
 
     const db = client.db('Freelance');
     const jobCollection = db.collection("jobs");
+    const acceptedCollection = db.collection('accepted')
 
     app.get('/jobs', async (req, res) => {
         
@@ -123,6 +124,23 @@ async function run() {
       const result = await jobCollection.find({userEmail:email}).toArray()
       res.send(result);
     })
+
+    app.post('/acceptjob' , async(req,res)=>{
+      const data = req.body
+      const result = await acceptedCollection.insertOne(data)
+      res.send(result)
+    })
+
+    app.get('/acceptedjobs', async (req, res) => {
+  
+    const email = req.query.email;
+
+    const result = await acceptedCollection.find({ email }).toArray();
+    res.send({ success: true, result });
+
+
+    });
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
