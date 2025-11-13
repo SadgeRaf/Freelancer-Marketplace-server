@@ -34,7 +34,7 @@ const verifyToken = async (req, res, next) => {
   
   if(!wholeToken){
     return res.status(401).send({
-      message: "kill yourself. Where yo token at?"
+      message: "unauthorized. Token not found"
     })
   }
 
@@ -45,7 +45,7 @@ const verifyToken = async (req, res, next) => {
     next()
   } catch (error) {
     res.status(401).send({
-      message: "kill yourself"
+      message: "unauthorized"
     })
   }
 
@@ -87,7 +87,7 @@ async function run() {
     })
 
     //update
-    app.put('/jobs/:id', async (req, res)=>{
+    app.put('/jobs/:id',verifyToken, async (req, res)=>{
       const {id} = req.params
       const data = req.body
       const objectId = new ObjectId(id)
@@ -104,7 +104,7 @@ async function run() {
     })
 
     //delete
-   app.delete('/jobs/:id', async (req,res)=> {
+    app.delete('/jobs/:id',verifyToken, async (req,res)=> {
     const {id} = req.params
     
     const result = await jobCollection.deleteOne({_id: new ObjectId(id)})
@@ -112,7 +112,7 @@ async function run() {
     res.send({
       success: true,
     })
-   })
+    })
 
     app.get('/latestJobs', async (req,res)=> {
       const result = await jobCollection.find().sort({postedAt: 'asc' }).limit(6).toArray()
@@ -125,13 +125,13 @@ async function run() {
       res.send(result);
     })
 
-    app.post('/acceptjob' , async(req,res)=>{
+    app.post('/acceptjob',verifyToken , async(req,res)=>{
       const data = req.body
       const result = await acceptedCollection.insertOne(data)
       res.send(result)
     })
 
-    app.get('/acceptedjobs', async (req, res) => {
+    app.get('/acceptedjobs',verifyToken, async (req, res) => {
   
     const email = req.query.email;
 
@@ -141,6 +141,20 @@ async function run() {
 
     });
 
+    app.delete('/finishjob/:id',verifyToken, async (req, res)=>{
+      const {id} = req.params
+      
+      const accepted = await acceptedCollection.findOne({_id: new ObjectId(id)})
+      const deleteAccepted = await acceptedCollection.deleteOne({_id: new ObjectId(id)})
+     
+      const jobid = accepted.job?._id
+
+      const job = await jobCollection.deleteOne({_id: new ObjectId(jobid)})
+
+      res.send({
+        success: true
+      });
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
