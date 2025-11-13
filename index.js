@@ -30,32 +30,29 @@ const client = new MongoClient(uri, {
 });
 
 const verifyToken = async (req, res, next) => {
-  const wholeToken = req.headers.authorization
-  
-  if(!wholeToken){
-    return res.status(401).send({
-      message: "unauthorized. Token not found"
-    })
+  const wholeToken = req.headers.authorization;
+
+  if (!wholeToken) {
+    return res.status(401).send({ message: "unauthorized. Token not found" });
   }
 
-  const token = wholeToken.split(' ')[1]
+  const token = wholeToken.split(" ")[1];
 
   try {
-    await admin.auth().verifyIdToken(token)
-    next()
+    const decodedUser = await admin.auth().verifyIdToken(token);
+    req.user = decodedUser; 
+    next();
   } catch (error) {
-    res.status(401).send({
-      message: "unauthorized"
-    })
+    console.error("Token verification failed:", error);
+    res.status(401).send({ message: "unauthorized" });
   }
+};
 
-  
-}
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const db = client.db('Freelance');
     const jobCollection = db.collection("jobs");
@@ -66,6 +63,13 @@ async function run() {
         const result = await jobCollection.find().toArray();
         
         res.send(result)
+    })
+
+    app.get('/sortjobs', async(req,res)=>{
+      const {order} = req.query
+      const sort = order === 'ascending' ? 1 : -1;
+      const result = await jobCollection.find().sort({ postedAt: sort}).toArray()
+      res.send(result);
     })
 
     app.post('/jobs', async (req, res) => {
@@ -145,19 +149,33 @@ async function run() {
       const {id} = req.params
       
       const accepted = await acceptedCollection.findOne({_id: new ObjectId(id)})
-      const deleteAccepted = await acceptedCollection.deleteOne({_id: new ObjectId(id)})
+       await acceptedCollection.deleteOne({_id: new ObjectId(id)})
      
       const jobid = accepted.job?._id
 
-      const job = await jobCollection.deleteOne({_id: new ObjectId(jobid)})
+       await jobCollection.deleteOne({_id: new ObjectId(jobid)})
 
       res.send({
         success: true
       });
     })
 
+    app.delete('/dropjob/:id' , verifyToken, async (req,res)=>{
+      const { id } = req.params;
+      const email = req.user.email;
+
+       const result = await acceptedCollection.deleteOne({
+        _id: new ObjectId(id),
+         userEmail: email
+       });
+
+       res.send({
+        success: true
+       })
+    })
+
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
