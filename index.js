@@ -60,9 +60,18 @@ async function run() {
 
     app.get('/jobs', async (req, res) => {
         
-        const result = await jobCollection.find().toArray();
+        const limit = req.query.limit
+        const skip = req.query.skip
+
+        const jobs = await jobCollection.find()
+        .project({posteBt: 0, summary: 0, userEmail: 0})
+        .limit(Number(limit)) 
+        .skip(Number(skip))
+        .toArray();
+
+        const count = await jobCollection.countDocuments();
         
-        res.send(result)
+        res.send({jobs,count})
     })
 
     app.get('/sortjobs', async(req,res)=>{
